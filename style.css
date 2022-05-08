@@ -1,0 +1,20 @@
+.btn-group button {
+    float: left;
+}
+
+#message {
+    font-size: 5em;
+}
+
+.right {
+    color: green;
+}
+
+.wrong {
+    color: red;
+}
+
+button {
+    font-size: 3em;
+    margin: 0.1em;
+}
