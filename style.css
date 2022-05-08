@@ -1,9 +1,14 @@
-.btn-group button {
+#bbms button {
     float: left;
+}
+
+#sections button {
+    display: flex;
 }
 
 #message {
     font-size: 5em;
+    text-align: center;
 }
 
 .right {

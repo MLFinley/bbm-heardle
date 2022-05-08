@@ -1,48 +1,70 @@
 var widget;
 var bbm;
-var randomPos;
+var currentSection = 0;
+var gameOver = false;
+var todaysRandom = new Math.seedrandom(new Date().toDateString());
 
-// https://stackoverflow.com/questions/9763441/milliseconds-to-time-in-javascript
-function millisToTime(s) {
-    var ms = s % 1000;
-    s = (s - ms) / 1000;
-    var secs = s % 60;
-    s = (s - secs) / 60;
-    var mins = s % 60;
-    var hrs = (s - mins) / 60;
+//This really doesnt need to be an array 
+// but it handles the case of no time out being present and any potential bugged state well enough
+var timeouts = [];
 
-    return hrs + ':' + mins + ':' + secs + '.' + ms;
+function clearAllTimeouts() {
+    while (timeouts.length != 0) {
+        clearTimeout(timeouts.pop());
+    }
 }
 
-function timeToMillis(time) {
-    var blocks = time.split(':').reverse();
-    console.assert(blocks.length <= 3);
-    var output = 0;
-    for (var i = 0; i < blocks.length; i++) {
-        output += parseInt(blocks[i]) * Math.pow(60, i);
-    }
-    output *= 1000;
-    return output;
+function randomBBM() {
+    return bbms[Math.floor(todaysRandom() * bbms.length)];
+}
+
+function bbmNums() {
+    return bbms.map(bbm => bbm.num);
+}
+
+function createEmbed(trackId) {
+    return '<iframe hidden width="100%" height="300" scrolling="yes" frameborder="no" allow="autoplay" src="https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/' +
+        String(trackId) + '&color=%23ff5500&auto_play=false&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=true&visual=true"></iframe>';
+}
+
+function gameEnd() {
+    gameOver = true;
+    $('#bbms').hide();
+    range(6).forEach(i => $(`#Section${i}`).prop('disabled', false));
+    $('iframe').removeAttr('hidden');
+    clearAllTimeouts();
+    widget.seekTo(0);
+    widget.play();
 }
 
 function right() {
     var message = $('#message');
     message.text('Nice job!');
     message.addClass('right');
-
+    gameEnd();
 }
 
 function wrong() {
-    var message = $('#message');
-    message.text('You were wrong >:(');
-    message.addClass('wrong');
+    if (currentSection == 5) {
+        var message = $('#message');
+        message.text('You were wrong >:(');
+        message.addClass('wrong');
+        gameEnd();
+        return;
+    }
+    currentSection++;
+    $(`#Section${currentSection}`).prop('disabled', false);
+    widget.pause();
+    clearAllTimeouts();
+    console.log(timeouts);
 }
 
-function toggle() {
-    var seekPos = (timeToMillis(bbm.lengthStr) - 30000) * randomPos;
-    widget.seekTo(seekPos);
-    console.log(millisToTime(seekPos));
-    widget.toggle();
+function playAtPosition(position) {
+    widget.seekTo(position);
+    widget.play();
+    clearAllTimeouts();
+    if (!gameOver)
+        timeouts.push(setTimeout(() => widget.pause(), 10000));
 }
 
 $(document).ready(function() {
@@ -50,19 +72,36 @@ $(document).ready(function() {
     console.log(bbm.num);
     $('div#placeholder').html(createEmbed(bbm.trackId));
     widget = SC.Widget(document.querySelector('iframe'));
-    randomPos = Math.random();
+    range(6).forEach(i => {
+        var seekPos = (timeToMillis(bbm.lengthStr) - 10000) * todaysRandom();
+        newButton = $(document.createElement('button')).prop({
+            type: 'button',
+            id: `Section${i}`,
+            innerHTML: `Section ${i}`
+        });
+        newButton.on('click', () => playAtPosition(seekPos));
+        if (i != 0) {
+            newButton.prop('disabled', true);
+        }
+        $('#sections').append(newButton);
+    });
 
-    $('#playpause').on('click', toggle);
+    // $('#playpause').on('click', toggle);
     bbmNums().forEach(bbmNum => {
 
         newButton = $(document.createElement('button')).prop({
             type: 'button',
             innerHTML: bbmNum
         });
-
-        $('.btn-group').append(newButton);
+        $('#bbms').append(newButton);
 
         newButton.on('click', bbmNum == bbm.num ? right : wrong);
-        newButton.on('click', () => $('iframe').removeAttr('hidden'));
     });
+
+    newButton = $(document.createElement('button')).prop({
+        type: 'button',
+        innerHTML: 'Skip'
+    });
+    newButton.on('click', wrong);
+    $('#bbms').append(newButton);
 });
